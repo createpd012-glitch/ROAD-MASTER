@@ -13,6 +13,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,11 +33,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import com.google.firebase.FirebaseApp
+import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
@@ -51,6 +58,83 @@ private val Gold = Color(0xFF75D9FF)
 private val GoldLight = Color(0xFFE8FAFF)
 private val Blue = Color(0xFF2389FF)
 
+@Composable
+private fun LoadingScreen() {
+    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF78D8F2), Color(0xFF286BA8), Color(0xFF102D59))))) {
+        PolygonPattern(Modifier.fillMaxSize())
+        Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            RoadMasterLogo(Modifier.size(148.dp))
+            Text("ROAD MASTER", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+            Text("모험을 준비하고 있어요!", color = Color(0xFFE5FAFF), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                repeat(3) { Box(Modifier.size(9.dp).background(Color(0xFFFFE58A), RoundedCornerShape(50))) }
+            }
+        }
+        Text("STARTING", Modifier.align(Alignment.BottomCenter).padding(bottom = 42.dp), color = Color.White.copy(alpha = 0.8f), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 3.sp)
+    }
+}
+
+@Composable
+private fun RoadMasterLogo(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        val shield = Path().apply {
+            moveTo(w * .5f, h * .04f)
+            cubicTo(w * .78f, h * .12f, w * .91f, h * .12f, w * .94f, h * .18f)
+            lineTo(w * .87f, h * .63f)
+            cubicTo(w * .82f, h * .82f, w * .62f, h * .94f, w * .5f, h * .98f)
+            cubicTo(w * .38f, h * .94f, w * .18f, h * .82f, w * .13f, h * .63f)
+            lineTo(w * .06f, h * .18f)
+            cubicTo(w * .09f, h * .12f, w * .22f, h * .12f, w * .5f, h * .04f)
+            close()
+        }
+        drawPath(shield, Color(0xFFFFD66E))
+        drawPath(shield, Color.White, style = Stroke(width = w * .035f))
+        val road = Path().apply {
+            moveTo(w * .37f, h * .78f)
+            cubicTo(w * .29f, h * .61f, w * .62f, h * .51f, w * .49f, h * .23f)
+            lineTo(w * .63f, h * .23f)
+            cubicTo(w * .76f, h * .52f, w * .43f, h * .64f, w * .57f, h * .78f)
+            close()
+        }
+        drawPath(road, Color(0xFF164D7C))
+        val centerLine = Path().apply {
+            moveTo(w * .49f, h * .72f)
+            cubicTo(w * .39f, h * .58f, w * .67f, h * .48f, w * .56f, h * .29f)
+        }
+        drawPath(centerLine, Color.White, style = Stroke(width = w * .025f, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(w * .055f, w * .04f))))
+        drawCircle(Color.White.copy(alpha = .9f), radius = w * .045f, center = androidx.compose.ui.geometry.Offset(w * .72f, h * .27f))
+    }
+}
+
+@Composable
+private fun PolygonPattern(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val width = size.width
+        val height = size.height
+        val triangles = listOf(
+            listOf(.04f to .18f, .30f to .06f, .23f to .40f),
+            listOf(.30f to .06f, .53f to .20f, .23f to .40f),
+            listOf(.53f to .20f, .78f to .08f, .82f to .38f),
+            listOf(.23f to .40f, .53f to .20f, .48f to .58f),
+            listOf(.53f to .20f, .82f to .38f, .48f to .58f),
+            listOf(.04f to .72f, .23f to .40f, .48f to .58f),
+            listOf(.48f to .58f, .82f to .38f, .94f to .78f)
+        )
+        triangles.forEachIndexed { index, points ->
+            val path = Path().apply {
+                moveTo(points[0].first * width, points[0].second * height)
+                lineTo(points[1].first * width, points[1].second * height)
+                lineTo(points[2].first * width, points[2].second * height)
+                close()
+            }
+            drawPath(path, Color.White.copy(alpha = if (index % 2 == 0) .07f else .035f))
+            drawPath(path, Color.White.copy(alpha = .16f), style = Stroke(width = 1.2.dp.toPx()))
+        }
+    }
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,12 +145,14 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun RoadMasterApp() {
     var tab by remember { mutableIntStateOf(0) }
+    var showSplash by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) { delay(2000); showSplash = false }
     var tracking by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences("road_master_profile", Context.MODE_PRIVATE) }
     var musicEnabled by remember { mutableStateOf(preferences.getBoolean("background_music", true)) }
-    DisposableEffect(musicEnabled) {
-        if (musicEnabled) BackgroundMusicPlayer.start() else BackgroundMusicPlayer.stop()
+    DisposableEffect(musicEnabled, showSplash) {
+        if (!showSplash && musicEnabled) BackgroundMusicPlayer.start() else BackgroundMusicPlayer.stop()
         onDispose { BackgroundMusicPlayer.stop() }
     }
     val routePoints = remember { mutableStateListOf<TrackPoint>() }
@@ -87,12 +173,18 @@ fun RoadMasterApp() {
         ContextCompat.registerReceiver(context, receiver, IntentFilter(TrackingService.ACTION_LOCATION_UPDATE), ContextCompat.RECEIVER_NOT_EXPORTED)
         onDispose { runCatching { context.unregisterReceiver(receiver) } }
     }
-    MaterialTheme(colorScheme = darkColorScheme(primary = Gold, background = Navy, surface = WoodDark)) {
+    MaterialTheme(colorScheme = darkColorScheme(primary = Gold, background = Navy, surface = WoodDark), typography = Typography(defaultFontFamily = FontFamily.SansSerif)) {
+        if (showSplash) { LoadingScreen(); return@MaterialTheme }
         when (tab) {
             0 -> MapHome(tracking, routePoints, { tracking = true }, { tracking = false }, { tab = it })
             1 -> RankingScreen(Modifier.fillMaxSize()) { tab = 0 }
             2 -> StatsScreen(Modifier.fillMaxSize()) { tab = 0 }
-            else -> SettingsScreen(Modifier.fillMaxSize(), musicEnabled, { tab = 0 }) { enabled ->
+            else -> SettingsScreen(Modifier.fillMaxSize(), musicEnabled, { tab = 0 }, {
+                if (FirebaseApp.getApps(context).isNotEmpty()) runCatching { FirebaseAuth.getInstance().signOut() }
+                preferences.edit().remove("nickname").apply()
+                Toast.makeText(context, "로그아웃 처리했습니다.", Toast.LENGTH_SHORT).show()
+                tab = 0
+            }) { enabled ->
                 musicEnabled = enabled
                 preferences.edit().putBoolean("background_music", enabled).apply()
             }
@@ -142,15 +234,8 @@ private fun MapHome(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Column(Modifier.weight(1f)) {
-                    IcePanel(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(horizontal = 16.dp, vertical = 11.dp)) {
-                            Text("ROAD MASTER", color = GoldLight, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
-                            Text("도로를 정복하라", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
-                            Text(if (tracking) "● GPS 탐험 기록 중" else "● 탐험 준비 완료", color = if (tracking) Color(0xFF9EFFB0) else Gold, fontSize = 11.sp)
-                        }
-                    }
-                }
+                RoadMasterLogo(Modifier.size(width = 76.dp, height = 76.dp))
+                Spacer(Modifier.weight(1f))
                 IceButton(
                     text = "내 위치",
                     icon = { Icon(Icons.Default.MyLocation, null, tint = GoldLight) },
@@ -221,7 +306,10 @@ private fun MapHome(
 private fun IcePanel(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Surface(modifier = modifier.shadow(10.dp, RoundedCornerShape(18.dp)), shape = RoundedCornerShape(18.dp), color = WoodDark,
         border = androidx.compose.foundation.BorderStroke(1.8.dp, Gold)) {
-        Box(Modifier.background(Brush.verticalGradient(listOf(Color(0xFF397FAE), Color(0xFF174A78), Color(0xFF0A2A4D))))) { content() }
+        Box(Modifier.background(Brush.verticalGradient(listOf(Color(0xFF397FAE), Color(0xFF174A78), Color(0xFF0A2A4D))))) {
+            PolygonPattern(Modifier.matchParentSize())
+            content()
+        }
     }
 }
 
@@ -283,11 +371,12 @@ private fun BottomItem(text: String, modifier: Modifier = Modifier, icon: @Compo
     }
 }
 
-@Composable private fun SettingsScreen(modifier: Modifier = Modifier, musicEnabled: Boolean, onBack: () -> Unit, onMusicChanged: (Boolean) -> Unit) {
+@Composable private fun SettingsScreen(modifier: Modifier = Modifier, musicEnabled: Boolean, onBack: () -> Unit, onLogout: () -> Unit, onMusicChanged: (Boolean) -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("road_master_profile", Context.MODE_PRIVATE) }
     var nickname by remember { mutableStateOf(prefs.getString("nickname", "ROAD PLAYER") ?: "ROAD PLAYER") }
     var editNickname by remember { mutableStateOf(nickname) }
+    var showLogoutConfirm by remember { mutableStateOf(false) }
     Column(modifier.fillMaxSize().background(Navy).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("← 지도", color = Gold, fontSize = 14.sp, modifier = Modifier.clickable { onBack() })
         Text("설정", color = GoldLight, fontSize = 27.sp, fontWeight = FontWeight.Black)
@@ -319,5 +408,15 @@ private fun BottomItem(text: String, modifier: Modifier = Modifier, icon: @Compo
             }
         }
         Text("음악은 앱에서 직접 생성하는 오리지널 사운드입니다.", color = GoldLight, fontSize = 11.sp)
+        IceButton("로그아웃", Modifier.fillMaxWidth(), onClick = { showLogoutConfirm = true })
+    }
+    if (showLogoutConfirm) {
+        AlertDialog(
+            onDismissRequest = { showLogoutConfirm = false },
+            title = { Text("로그아웃") },
+            text = { Text("현재 플레이어 정보를 초기화하고 로그아웃할까요?") },
+            confirmButton = { TextButton(onClick = { showLogoutConfirm = false; onLogout() }) { Text("로그아웃") } },
+            dismissButton = { TextButton(onClick = { showLogoutConfirm = false }) { Text("취소") } }
+        )
     }
 }
