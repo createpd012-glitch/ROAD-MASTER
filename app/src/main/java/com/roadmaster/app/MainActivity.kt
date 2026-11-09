@@ -1,6 +1,7 @@
 package com.roadmaster.app
 
 import android.os.Bundle
+import android.widget.Toast
 import android.content.Intent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -135,7 +136,13 @@ fun RoadMasterApp() {
                 }
             }
         }
-        Button(onClick = {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedButton(onClick = {
+                val latest = routePoints.lastOrNull()
+                if (latest != null) mapView.moveToCurrentLocation(latest)
+                else Toast.makeText(context, "먼저 GPS 기록을 시작해 현재 위치를 확인해 주세요.", Toast.LENGTH_SHORT).show()
+            }, modifier = Modifier.weight(1f).height(50.dp), shape = RoundedCornerShape(14.dp)) { Text("내 위치") }
+            Button(onClick = {
             if (tracking) {
                 context.stopService(Intent(context, TrackingService::class.java))
                 onTrackingStopped()
@@ -148,8 +155,9 @@ fun RoadMasterApp() {
                     onTrackingStarted()
                 } else permissionLauncher.launch(missing.toTypedArray())
             }
-        }, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(15.dp)) {
-            Text(if (tracking) "GPS 기록 종료" else "GPS 이동 기록 시작", fontWeight = FontWeight.Bold)
+        }, modifier = Modifier.weight(1.4f).height(50.dp), shape = RoundedCornerShape(14.dp)) {
+            Text(if (tracking) "GPS 기록 종료" else "GPS 기록 시작", fontWeight = FontWeight.Bold)
+            }
         }
         Text("이동 중에는 화면을 조작하지 마세요. 현재 경로는 이 화면의 임시 표시이며 서버에 저장되지 않습니다.", color = Color(0xFF8FA5BC), fontSize = 10.sp)
     }
@@ -181,9 +189,27 @@ fun RoadMasterApp() {
 }
 
 @Composable private fun ProfileScreen(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("road_master_profile", Context.MODE_PRIVATE) }
+    var nickname by remember { mutableStateOf(prefs.getString("nickname", "ROAD PLAYER") ?: "ROAD PLAYER") }
+    var editNickname by remember { mutableStateOf(nickname) }
     Column(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("플레이어 정보", color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Black)
-        StatCard("닉네임", "ROAD PLAYER", Modifier.fillMaxWidth())
-        Text("계정 연결, 개인정보 및 위치정보 동의, 알림 설정은 서비스 출시 전 연결됩니다.", color = Color(0xFF9EB3C9))
+        Surface(color = Panel, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("나의 닉네임", color = Color(0xFF9EB3C9), fontSize = 13.sp)
+                Text(nickname, color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+                OutlinedTextField(value = editNickname, onValueChange = { if (it.length <= 16) editNickname = it }, label = { Text("새 닉네임") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Button(onClick = {
+                    val value = editNickname.trim()
+                    if (value.isNotEmpty()) {
+                        nickname = value
+                        prefs.edit().putString("nickname", value).apply()
+                        Toast.makeText(context, "닉네임을 저장했습니다.", Toast.LENGTH_SHORT).show()
+                    } else Toast.makeText(context, "닉네임을 입력해 주세요.", Toast.LENGTH_SHORT).show()
+                }, modifier = Modifier.fillMaxWidth()) { Text("닉네임 저장") }
+            }
+        }
+        Text("닉네임은 이 휴대폰에 저장됩니다. 계정 간 동기화 기능은 아직 연결되지 않았습니다.", color = Color(0xFF9EB3C9), fontSize = 12.sp)
     }
 }
