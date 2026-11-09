@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
+import android.graphics.Typeface
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -173,7 +174,7 @@ fun RoadMasterApp() {
         ContextCompat.registerReceiver(context, receiver, IntentFilter(TrackingService.ACTION_LOCATION_UPDATE), ContextCompat.RECEIVER_NOT_EXPORTED)
         onDispose { runCatching { context.unregisterReceiver(receiver) } }
     }
-    MaterialTheme(colorScheme = darkColorScheme(primary = Gold, background = Navy, surface = WoodDark), typography = Typography(defaultFontFamily = FontFamily.SansSerif)) {
+    MaterialTheme(colorScheme = darkColorScheme(primary = Gold, background = Navy, surface = WoodDark), typography = Typography(defaultFontFamily = FontFamily(Typeface.create("sans-serif-rounded", Typeface.NORMAL)))) {
         if (showSplash) { LoadingScreen(); return@MaterialTheme }
         when (tab) {
             0 -> MapHome(tracking, routePoints, { tracking = true }, { tracking = false }, { tab = it })
@@ -315,7 +316,7 @@ private fun IcePanel(modifier: Modifier = Modifier, content: @Composable () -> U
 
 @Composable
 private fun IceButton(text: String, modifier: Modifier = Modifier, highlighted: Boolean = false, icon: (@Composable () -> Unit)? = null, onClick: () -> Unit) {
-    Surface(modifier = modifier.heightIn(min = 46.dp).shadow(5.dp, RoundedCornerShape(13.dp)).clickable(onClick = onClick),
+    Surface(modifier = modifier.heightIn(min = 46.dp).shadow(5.dp, RoundedCornerShape(20.dp)).clickable(onClick = onClick),
         shape = RoundedCornerShape(13.dp), color = WoodMid, border = androidx.compose.foundation.BorderStroke(1.5.dp, GoldLight)) {
         Row(Modifier.background(Brush.verticalGradient(if (highlighted) listOf(Color(0xFFE5FCFF), Color(0xFF6CD9F5), Color(0xFF2385B7)) else listOf(Color(0xFF62B8E3), Color(0xFF286E9F), Color(0xFF123E69)))).padding(horizontal = 10.dp, vertical = 11.dp),
             horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
@@ -327,7 +328,7 @@ private fun IceButton(text: String, modifier: Modifier = Modifier, highlighted: 
 
 @Composable
 private fun BottomItem(text: String, modifier: Modifier = Modifier, icon: @Composable () -> Unit, selected: Boolean = false, onClick: () -> Unit) {
-    Surface(modifier = modifier.height(58.dp).clickable(onClick = onClick), shape = RoundedCornerShape(11.dp),
+    Surface(modifier = modifier.height(58.dp).clickable(onClick = onClick), shape = RoundedCornerShape(16.dp),
         color = if (selected) Color(0xFF2D8EBB) else Color(0xFF123F69), border = androidx.compose.foundation.BorderStroke(1.dp, Gold)) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             icon()
