@@ -34,6 +34,13 @@ class RoadMapView private constructor(context: Context, initialized: Unit) : Map
         }
     }
     fun setRoute(points: List<TrackPoint>) { pendingRoute = points; updateRoute(points) }
+    fun moveToCurrentLocation(point: TrackPoint) {
+        map?.animateCamera(
+            org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
+                LatLng(point.latitude, point.longitude), 16.0
+            ), 650
+        )
+    }
     private fun updateRoute(points: List<TrackPoint>) {
         val source = routeSource ?: return
         if (points.size < 2) return
