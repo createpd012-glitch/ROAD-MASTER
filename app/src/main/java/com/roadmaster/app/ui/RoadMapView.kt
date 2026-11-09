@@ -1,6 +1,10 @@
 package com.roadmaster.app.ui
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -8,12 +12,13 @@ import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.Style
-import org.maplibre.android.style.layers.CircleLayer
+import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.layers.LineLayer
-import org.maplibre.android.style.layers.PropertyFactory.circleColor
-import org.maplibre.android.style.layers.PropertyFactory.circleRadius
-import org.maplibre.android.style.layers.PropertyFactory.circleStrokeColor
-import org.maplibre.android.style.layers.PropertyFactory.circleStrokeWidth
+import org.maplibre.android.style.layers.PropertyFactory.iconAllowOverlap
+import org.maplibre.android.style.layers.PropertyFactory.iconAnchor
+import org.maplibre.android.style.layers.PropertyFactory.iconImage
+import org.maplibre.android.style.layers.PropertyFactory.iconIgnorePlacement
+import org.maplibre.android.style.layers.PropertyFactory.iconSize
 import org.maplibre.android.style.layers.PropertyFactory.lineColor
 import org.maplibre.android.style.layers.PropertyFactory.lineWidth
 import org.maplibre.android.style.sources.GeoJsonSource
@@ -42,12 +47,14 @@ class RoadMapView private constructor(context: Context, initialized: Unit) : Map
 
                 val locationSource = GeoJsonSource(LOCATION_SOURCE_ID, FeatureCollection.fromFeatures(emptyArray()))
                 style.addSource(locationSource)
+                style.addImage(LOCATION_ICON_ID, createCuteLocationPin())
                 style.addLayer(
-                    CircleLayer(LOCATION_LAYER_ID, LOCATION_SOURCE_ID).withProperties(
-                        circleColor("#E94735"),
-                        circleRadius(10.0f),
-                        circleStrokeColor("#FFFFFF"),
-                        circleStrokeWidth(3.5f)
+                    SymbolLayer(LOCATION_LAYER_ID, LOCATION_SOURCE_ID).withProperties(
+                        iconImage(LOCATION_ICON_ID),
+                        iconSize(0.72f),
+                        iconAnchor("bottom"),
+                        iconAllowOverlap(true),
+                        iconIgnorePlacement(true)
                     )
                 )
                 currentLocationSource = locationSource
@@ -75,6 +82,39 @@ class RoadMapView private constructor(context: Context, initialized: Unit) : Map
         )
     }
 
+    private fun createCuteLocationPin(): Bitmap {
+        val bitmap = Bitmap.createBitmap(96, 120, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.rgb(39, 177, 224); style = Paint.Style.FILL }
+        val outline = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 7f }
+        val pin = Path().apply {
+            moveTo(48f, 115f)
+            cubicTo(41f, 101f, 12f, 72f, 12f, 45f)
+            cubicTo(12f, 20f, 28f, 6f, 48f, 6f)
+            cubicTo(68f, 6f, 84f, 20f, 84f, 45f)
+            cubicTo(84f, 72f, 55f, 101f, 48f, 115f)
+            close()
+        }
+        canvas.drawPath(pin, fill)
+        canvas.drawPath(pin, outline)
+        val face = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.rgb(225, 250, 255); style = Paint.Style.FILL }
+        canvas.drawCircle(48f, 45f, 27f, face)
+        val eyes = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.rgb(16, 61, 91); style = Paint.Style.FILL }
+        canvas.drawCircle(39f, 42f, 3.8f, eyes)
+        canvas.drawCircle(57f, 42f, 3.8f, eyes)
+        val smile = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.rgb(16, 61, 91)
+            style = Paint.Style.STROKE
+            strokeWidth = 3.5f
+            strokeCap = Paint.Cap.ROUND
+        }
+        val smilePath = Path().apply { moveTo(39f, 54f); quadTo(48f, 63f, 57f, 54f) }
+        canvas.drawPath(smilePath, smile)
+        val shine = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.WHITE; alpha = 210 }
+        canvas.drawCircle(29f, 25f, 5f, shine)
+        return bitmap
+    }
+
     private fun updateRoute(points: List<TrackPoint>) {
         val source = routeSource ?: return
         if (points.size < 2) return
@@ -99,6 +139,7 @@ class RoadMapView private constructor(context: Context, initialized: Unit) : Map
         private const val ROUTE_LAYER_ID = "roadmaster-route-layer"
         private const val LOCATION_SOURCE_ID = "roadmaster-current-location-source"
         private const val LOCATION_LAYER_ID = "roadmaster-current-location-layer"
+        private const val LOCATION_ICON_ID = "roadmaster-cute-location-pin"
         private val OSM_RASTER_STYLE = """
         {"version":8,"name":"ROAD MASTER OSM Demo","sources":{"osm-raster":{"type":"raster","tiles":["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],"tileSize":256,"attribution":"© OpenStreetMap contributors"}},"layers":[{"id":"osm-background","type":"background","paint":{"background-color":"#dce7e5"}},{"id":"osm-raster-layer","type":"raster","source":"osm-raster","paint":{"raster-opacity":1.0}}]}
         """.trimIndent()
