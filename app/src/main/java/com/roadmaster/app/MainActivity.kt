@@ -63,6 +63,12 @@ fun RoadMasterApp() {
     var tab by remember { mutableIntStateOf(0) }
     var tracking by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val preferences = remember { context.getSharedPreferences("road_master_profile", Context.MODE_PRIVATE) }
+    var musicEnabled by remember { mutableStateOf(preferences.getBoolean("background_music", true)) }
+    DisposableEffect(musicEnabled) {
+        if (musicEnabled) BackgroundMusicPlayer.start() else BackgroundMusicPlayer.stop()
+        onDispose { BackgroundMusicPlayer.stop() }
+    }
     val routePoints = remember { mutableStateListOf<TrackPoint>() }
     DisposableEffect(context) {
         val receiver = object : BroadcastReceiver() {
@@ -86,7 +92,10 @@ fun RoadMasterApp() {
             0 -> MapHome(tracking, routePoints, { tracking = true }, { tracking = false }, { tab = it })
             1 -> RankingScreen(Modifier.fillMaxSize())
             2 -> StatsScreen(Modifier.fillMaxSize())
-            else -> SettingsScreen(Modifier.fillMaxSize())
+            else -> SettingsScreen(Modifier.fillMaxSize(), musicEnabled) { enabled ->
+                musicEnabled = enabled
+                preferences.edit().putBoolean("background_music", enabled).apply()
+            }
         }
     }
 }
@@ -272,12 +281,11 @@ private fun BottomItem(text: String, modifier: Modifier = Modifier, icon: @Compo
     }
 }
 
-@Composable private fun SettingsScreen(modifier: Modifier = Modifier) {
+@Composable private fun SettingsScreen(modifier: Modifier = Modifier, musicEnabled: Boolean, onMusicChanged: (Boolean) -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("road_master_profile", Context.MODE_PRIVATE) }
     var nickname by remember { mutableStateOf(prefs.getString("nickname", "ROAD PLAYER") ?: "ROAD PLAYER") }
     var editNickname by remember { mutableStateOf(nickname) }
-    var musicEnabled by remember { mutableStateOf(prefs.getBoolean("background_music", true)) }
     Column(modifier.fillMaxSize().background(Navy).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("설정", color = GoldLight, fontSize = 27.sp, fontWeight = FontWeight.Black)
         IcePanel(Modifier.fillMaxWidth()) {
@@ -288,10 +296,8 @@ private fun BottomItem(text: String, modifier: Modifier = Modifier, icon: @Compo
                     Text("배경음악", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                     Text("신나는 오리지널 게임 음악", color = GoldLight, fontSize = 12.sp)
                 }
-                Switch(checked = musicEnabled, onCheckedChange = {
-                    musicEnabled = it
-                    prefs.edit().putBoolean("background_music", it).apply()
-                }, colors = SwitchDefaults.colors(checkedThumbColor = WoodDark, checkedTrackColor = Gold))
+                Switch(checked = musicEnabled, onCheckedChange = onMusicChanged,
+                    colors = SwitchDefaults.colors(checkedThumbColor = WoodDark, checkedTrackColor = Gold))
             }
         }
         IcePanel(Modifier.fillMaxWidth()) {
