@@ -117,7 +117,11 @@ class RoadMapView private constructor(context: Context, initialized: Unit) : Map
 
     private fun updateRoute(points: List<TrackPoint>) {
         val source = routeSource ?: return
-        if (points.size < 2) return
+        if (points.size < 2) {
+            source.setGeoJson(emptyLine())
+            lastCameraPointCount = 0
+            return
+        }
         source.setGeoJson(LineString.fromLngLats(points.map { Point.fromLngLat(it.longitude, it.latitude) }))
         if (points.size > lastCameraPointCount) {
             val latest = points.last()
