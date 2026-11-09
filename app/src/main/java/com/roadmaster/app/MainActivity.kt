@@ -21,7 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Explore
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.*
@@ -43,11 +44,11 @@ import com.roadmaster.app.location.TrackingService
 import com.roadmaster.app.ui.RoadMapView
 import com.roadmaster.app.ui.TrackPoint
 
-private val Navy = Color(0xFF101820)
-private val WoodDark = Color(0xFF4A2412)
-private val WoodMid = Color(0xFF81502A)
-private val Gold = Color(0xFFFFD477)
-private val GoldLight = Color(0xFFFFE9A8)
+private val Navy = Color(0xFF071A35)
+private val WoodDark = Color(0xFF123B68)
+private val WoodMid = Color(0xFF23699B)
+private val Gold = Color(0xFF75D9FF)
+private val GoldLight = Color(0xFFE8FAFF)
 private val Blue = Color(0xFF2389FF)
 
 class MainActivity : ComponentActivity() {
@@ -81,25 +82,11 @@ fun RoadMasterApp() {
         onDispose { runCatching { context.unregisterReceiver(receiver) } }
     }
     MaterialTheme(colorScheme = darkColorScheme(primary = Gold, background = Navy, surface = WoodDark)) {
-        Scaffold(
-            containerColor = Navy,
-            bottomBar = {
-                if (tab != 0) {
-                    NavigationBar(containerColor = WoodDark) {
-                        NavigationBarItem(selected = tab == 0, onClick = { tab = 0 }, icon = { Icon(Icons.Default.Explore, null) }, label = { Text("지도") })
-                        NavigationBarItem(selected = tab == 1, onClick = { tab = 1 }, icon = { Icon(Icons.Default.EmojiEvents, null) }, label = { Text("랭킹") })
-                        NavigationBarItem(selected = tab == 2, onClick = { tab = 2 }, icon = { Icon(Icons.Default.Route, null) }, label = { Text("기록") })
-                        NavigationBarItem(selected = tab == 3, onClick = { tab = 3 }, icon = { Icon(Icons.Default.Person, null) }, label = { Text("내 정보") })
-                    }
-                }
-            }
-        ) { padding ->
-            when (tab) {
-                0 -> MapHome(tracking, routePoints, { tracking = true }, { tracking = false }, { tab = it })
-                1 -> RankingScreen(Modifier.padding(padding))
-                2 -> StatsScreen(Modifier.padding(padding))
-                else -> ProfileScreen(Modifier.padding(padding))
-            }
+        when (tab) {
+            0 -> MapHome(tracking, routePoints, { tracking = true }, { tracking = false }, { tab = it })
+            1 -> RankingScreen(Modifier.fillMaxSize())
+            2 -> StatsScreen(Modifier.fillMaxSize())
+            else -> SettingsScreen(Modifier.fillMaxSize())
         }
     }
 }
@@ -147,7 +134,7 @@ private fun MapHome(
         ) {
             Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Column(Modifier.weight(1f)) {
-                    WoodPanel(Modifier.fillMaxWidth()) {
+                    IcePanel(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(horizontal = 16.dp, vertical = 11.dp)) {
                             Text("ROAD MASTER", color = GoldLight, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
                             Text("도로를 정복하라", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
@@ -155,7 +142,7 @@ private fun MapHome(
                         }
                     }
                 }
-                GameButton(
+                IceButton(
                     text = "내 위치",
                     icon = { Icon(Icons.Default.MyLocation, null, tint = GoldLight) },
                     onClick = {
@@ -187,47 +174,32 @@ private fun MapHome(
                 )
             }
 
-            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     Surface(color = Color(0xDDFFFFFF), shape = RoundedCornerShape(7.dp)) {
                         Text(RoadMapView.OSM_ATTRIBUTION, Modifier.padding(horizontal = 8.dp, vertical = 5.dp), color = Color.DarkGray, fontSize = 9.sp)
                     }
                 }
-                WoodPanel(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                            Text("탐험 현황", color = GoldLight, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                            Text("GPS 포인트  ${routePoints.size}", color = Color.White, fontSize = 12.sp)
+                IcePanel(Modifier.fillMaxWidth()) {
+                    Row(Modifier.fillMaxWidth().padding(7.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        BottomItem(if (tracking) "기록 종료" else "탐험 시작", Modifier.weight(1f), { Icon(Icons.Default.Explore, null, tint = GoldLight, modifier = Modifier.size(19.dp)) }, true) {
+                            if (tracking) {
+                                context.stopService(Intent(context, TrackingService::class.java))
+                                onTrackingStopped()
+                            } else {
+                                val permissions = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                                if (Build.VERSION.SDK_INT >= 33) permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+                                val missing = permissions.filter { ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED }
+                                if (missing.isEmpty()) {
+                                    routePoints.clear()
+                                    ContextCompat.startForegroundService(context, Intent(context, TrackingService::class.java))
+                                    onTrackingStarted()
+                                } else permissionLauncher.launch(missing.toTypedArray())
+                            }
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                            GameButton(
-                                text = if (tracking) "기록 종료" else "탐험 시작",
-                                modifier = Modifier.weight(1f),
-                                highlighted = true,
-                                onClick = {
-                                    if (tracking) {
-                                        context.stopService(Intent(context, TrackingService::class.java))
-                                        onTrackingStopped()
-                                    } else {
-                                        val permissions = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
-                                        if (Build.VERSION.SDK_INT >= 33) permissions.add(Manifest.permission.POST_NOTIFICATIONS)
-                                        val missing = permissions.filter { ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED }
-                                        if (missing.isEmpty()) {
-                                            ContextCompat.startForegroundService(context, Intent(context, TrackingService::class.java))
-                                            onTrackingStarted()
-                                        } else permissionLauncher.launch(missing.toTypedArray())
-                                    }
-                                }
-                            )
-                            GameButton(text = "내 정보", modifier = Modifier.weight(1f), onClick = { onTabSelected(3) })
-                            GameButton(text = "랭킹", modifier = Modifier.weight(1f), onClick = { onTabSelected(1) })
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                            MiniNavItem("지도", 0, onTabSelected, Modifier.weight(1f))
-                            MiniNavItem("랭킹", 1, onTabSelected, Modifier.weight(1f))
-                            MiniNavItem("기록", 2, onTabSelected, Modifier.weight(1f))
-                            MiniNavItem("내 정보", 3, onTabSelected, Modifier.weight(1f))
-                        }
+                        BottomItem("랭킹", Modifier.weight(1f), { Icon(Icons.Default.EmojiEvents, null, tint = GoldLight, modifier = Modifier.size(19.dp)) }) { onTabSelected(1) }
+                        BottomItem("기록", Modifier.weight(1f), { Icon(Icons.Default.Route, null, tint = GoldLight, modifier = Modifier.size(19.dp)) }) { onTabSelected(2) }
+                        BottomItem("설정", Modifier.weight(1f), { Icon(Icons.Default.Settings, null, tint = GoldLight, modifier = Modifier.size(19.dp)) }) { onTabSelected(3) }
                     }
                 }
                 Text("이동 중에는 화면을 조작하지 마세요.", color = Color.White, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
@@ -237,60 +209,33 @@ private fun MapHome(
 }
 
 @Composable
-private fun WoodPanel(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Surface(
-        modifier = modifier.shadow(8.dp, RoundedCornerShape(18.dp)),
-        shape = RoundedCornerShape(18.dp),
-        color = WoodDark,
-        border = androidx.compose.foundation.BorderStroke(2.dp, Gold)
-    ) {
-        Box(Modifier.background(Brush.verticalGradient(listOf(Color(0xFF996333), Color(0xFF603318), Color(0xFF3A1D10))))) {
-            content()
+private fun IcePanel(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Surface(modifier = modifier.shadow(10.dp, RoundedCornerShape(18.dp)), shape = RoundedCornerShape(18.dp), color = WoodDark,
+        border = androidx.compose.foundation.BorderStroke(1.8.dp, Gold)) {
+        Box(Modifier.background(Brush.verticalGradient(listOf(Color(0xFF397FAE), Color(0xFF174A78), Color(0xFF0A2A4D))))) { content() }
+    }
+}
+
+@Composable
+private fun IceButton(text: String, modifier: Modifier = Modifier, highlighted: Boolean = false, icon: (@Composable () -> Unit)? = null, onClick: () -> Unit) {
+    Surface(modifier = modifier.heightIn(min = 46.dp).shadow(5.dp, RoundedCornerShape(13.dp)).clickable(onClick = onClick),
+        shape = RoundedCornerShape(13.dp), color = WoodMid, border = androidx.compose.foundation.BorderStroke(1.5.dp, GoldLight)) {
+        Row(Modifier.background(Brush.verticalGradient(if (highlighted) listOf(Color(0xFFE5FCFF), Color(0xFF6CD9F5), Color(0xFF2385B7)) else listOf(Color(0xFF62B8E3), Color(0xFF286E9F), Color(0xFF123E69))).padding(horizontal = 10.dp, vertical = 11.dp),
+            horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) { icon(); Spacer(Modifier.width(6.dp)) }
+            Text(text, color = if (highlighted) Color(0xFF07304D) else Color.White, fontWeight = FontWeight.Black, fontSize = 13.sp, textAlign = TextAlign.Center)
         }
     }
 }
 
 @Composable
-private fun GameButton(
-    text: String,
-    modifier: Modifier = Modifier,
-    highlighted: Boolean = false,
-    icon: (@Composable () -> Unit)? = null,
-    onClick: () -> Unit
-) {
-    val colors = if (highlighted) listOf(Color(0xFFFFE7A0), Color(0xFFD99A36), Color(0xFF9A5A1D))
-        else listOf(Color(0xFFB8793B), Color(0xFF78421F), Color(0xFF4A2816))
-    Surface(
-        modifier = modifier.heightIn(min = 46.dp).shadow(4.dp, RoundedCornerShape(13.dp)).clickable(onClick = onClick),
-        shape = RoundedCornerShape(13.dp),
-        color = WoodMid,
-        border = androidx.compose.foundation.BorderStroke(1.5.dp, GoldLight)
-    ) {
-        Row(
-            Modifier.background(Brush.verticalGradient(colors)).padding(horizontal = 10.dp, vertical = 11.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (icon != null) {
-                icon()
-                Spacer(Modifier.width(6.dp))
-            }
-            Text(text, color = if (highlighted) Color(0xFF3C210F) else Color.White, fontWeight = FontWeight.Black, fontSize = 13.sp, textAlign = TextAlign.Center)
-        }
-    }
-}
-
-@Composable
-private fun MiniNavItem(label: String, index: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
-    val selected = index == 0
-    Surface(
-        modifier = modifier.height(34.dp).clickable { onSelect(index) },
-        color = if (selected) Color(0xFFB77A35) else Color(0xFF4A2816),
-        shape = RoundedCornerShape(9.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Gold.copy(alpha = 0.75f))
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(label, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+private fun BottomItem(text: String, modifier: Modifier = Modifier, icon: @Composable () -> Unit, selected: Boolean = false, onClick: () -> Unit) {
+    Surface(modifier = modifier.height(58.dp).clickable(onClick = onClick), shape = RoundedCornerShape(11.dp),
+        color = if (selected) Color(0xFF2D8EBB) else Color(0xFF123F69), border = androidx.compose.foundation.BorderStroke(1.dp, Gold)) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            icon()
+            Spacer(Modifier.height(3.dp))
+            Text(text, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         }
     }
 }
@@ -327,19 +272,34 @@ private fun MiniNavItem(label: String, index: Int, onSelect: (Int) -> Unit, modi
     }
 }
 
-@Composable private fun ProfileScreen(modifier: Modifier = Modifier) {
+@Composable private fun SettingsScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("road_master_profile", Context.MODE_PRIVATE) }
     var nickname by remember { mutableStateOf(prefs.getString("nickname", "ROAD PLAYER") ?: "ROAD PLAYER") }
     var editNickname by remember { mutableStateOf(nickname) }
-    Column(modifier.fillMaxSize().background(Navy).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("플레이어 정보", color = GoldLight, fontSize = 27.sp, fontWeight = FontWeight.Black)
-        Surface(color = WoodDark, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth(), border = androidx.compose.foundation.BorderStroke(1.5.dp, Gold)) {
+    var musicEnabled by remember { mutableStateOf(prefs.getBoolean("background_music", true)) }
+    Column(modifier.fillMaxSize().background(Navy).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text("설정", color = GoldLight, fontSize = 27.sp, fontWeight = FontWeight.Black)
+        IcePanel(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.MusicNote, null, tint = Gold, modifier = Modifier.size(23.dp))
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("배경음악", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                    Text("신나는 오리지널 게임 음악", color = GoldLight, fontSize = 12.sp)
+                }
+                Switch(checked = musicEnabled, onCheckedChange = {
+                    musicEnabled = it
+                    prefs.edit().putBoolean("background_music", it).apply()
+                }, colors = SwitchDefaults.colors(checkedThumbColor = WoodDark, checkedTrackColor = Gold))
+            }
+        }
+        IcePanel(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("나의 닉네임", color = GoldLight, fontSize = 13.sp)
-                Text(nickname, color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+                Text("플레이어 닉네임", color = GoldLight, fontSize = 13.sp)
+                Text(nickname, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 OutlinedTextField(value = editNickname, onValueChange = { if (it.length <= 16) editNickname = it }, label = { Text("새 닉네임") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                GameButton(text = "닉네임 저장", modifier = Modifier.fillMaxWidth(), highlighted = true, onClick = {
+                IceButton(text = "닉네임 저장", modifier = Modifier.fillMaxWidth(), highlighted = true, onClick = {
                     val value = editNickname.trim()
                     if (value.isNotEmpty()) {
                         nickname = value
@@ -349,6 +309,6 @@ private fun MiniNavItem(label: String, index: Int, onSelect: (Int) -> Unit, modi
                 })
             }
         }
-        Text("닉네임은 이 휴대폰에 저장됩니다. 계정 간 동기화 기능은 아직 연결되지 않았습니다.", color = Color(0xFFCFB991), fontSize = 12.sp)
+        Text("음악은 앱에서 직접 생성하는 오리지널 사운드입니다.", color = GoldLight, fontSize = 11.sp)
     }
 }
