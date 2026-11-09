@@ -29,6 +29,8 @@ import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -174,20 +176,25 @@ fun RoadMasterApp() {
         ContextCompat.registerReceiver(context, receiver, IntentFilter(TrackingService.ACTION_LOCATION_UPDATE), ContextCompat.RECEIVER_NOT_EXPORTED)
         onDispose { runCatching { context.unregisterReceiver(receiver) } }
     }
-    MaterialTheme(colorScheme = darkColorScheme(primary = Gold, background = Navy, surface = WoodDark), typography = Typography(defaultFontFamily = FontFamily(Typeface.create("sans-serif-rounded", Typeface.NORMAL)))) {
-        if (showSplash) { LoadingScreen(); return@MaterialTheme }
-        when (tab) {
-            0 -> MapHome(tracking, routePoints, { tracking = true }, { tracking = false }, { tab = it })
-            1 -> RankingScreen(Modifier.fillMaxSize()) { tab = 0 }
-            2 -> StatsScreen(Modifier.fillMaxSize()) { tab = 0 }
-            else -> SettingsScreen(Modifier.fillMaxSize(), musicEnabled, { tab = 0 }, {
-                if (FirebaseApp.getApps(context).isNotEmpty()) runCatching { FirebaseAuth.getInstance().signOut() }
-                preferences.edit().remove("nickname").apply()
-                Toast.makeText(context, "로그아웃 처리했습니다.", Toast.LENGTH_SHORT).show()
-                tab = 0
-            }) { enabled ->
-                musicEnabled = enabled
-                preferences.edit().putBoolean("background_music", enabled).apply()
+    MaterialTheme(colorScheme = darkColorScheme(primary = Gold, background = Navy, surface = WoodDark)) {
+        CompositionLocalProvider(LocalTextStyle provides LocalTextStyle.current.copy(fontFamily = FontFamily(Typeface.create("sans-serif-rounded", Typeface.NORMAL)))) {
+            if (showSplash) {
+                LoadingScreen()
+            } else {
+                when (tab) {
+                    0 -> MapHome(tracking, routePoints, { tracking = true }, { tracking = false }, { tab = it })
+                    1 -> RankingScreen(Modifier.fillMaxSize()) { tab = 0 }
+                    2 -> StatsScreen(Modifier.fillMaxSize()) { tab = 0 }
+                    else -> SettingsScreen(Modifier.fillMaxSize(), musicEnabled, { tab = 0 }, {
+                        if (FirebaseApp.getApps(context).isNotEmpty()) runCatching { FirebaseAuth.getInstance().signOut() }
+                        preferences.edit().remove("nickname").apply()
+                        Toast.makeText(context, "로그아웃 처리했습니다.", Toast.LENGTH_SHORT).show()
+                        tab = 0
+                    }) { enabled ->
+                        musicEnabled = enabled
+                        preferences.edit().putBoolean("background_music", enabled).apply()
+                    }
+                }
             }
         }
     }
