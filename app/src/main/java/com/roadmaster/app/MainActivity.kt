@@ -1,21 +1,21 @@
 package com.roadmaster.app
 
-import android.os.Bundle
-import android.widget.Toast
-import android.content.Intent
+import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.Manifest
 import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
+import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,23 +23,30 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Route
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.style.TextAlign
+import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
 import com.roadmaster.app.location.TrackingService
 import com.roadmaster.app.ui.RoadMapView
 import com.roadmaster.app.ui.TrackPoint
 
-private val Navy = Color(0xFF071426)
-private val Panel = Color(0xFF10243D)
+private val Navy = Color(0xFF101820)
+private val WoodDark = Color(0xFF4A2412)
+private val WoodMid = Color(0xFF81502A)
+private val Gold = Color(0xFFFFD477)
+private val GoldLight = Color(0xFFFFE9A8)
 private val Blue = Color(0xFF2389FF)
 
 class MainActivity : ComponentActivity() {
@@ -72,17 +79,22 @@ fun RoadMasterApp() {
         ContextCompat.registerReceiver(context, receiver, IntentFilter(TrackingService.ACTION_LOCATION_UPDATE), ContextCompat.RECEIVER_NOT_EXPORTED)
         onDispose { runCatching { context.unregisterReceiver(receiver) } }
     }
-    MaterialTheme(colorScheme = darkColorScheme(primary = Blue, background = Navy, surface = Panel)) {
-        Scaffold(containerColor = Navy, bottomBar = {
-            NavigationBar(containerColor = Panel) {
-                NavigationBarItem(selected = tab == 0, onClick = { tab = 0 }, icon = { Icon(Icons.Default.Explore, null) }, label = { Text("지도") })
-                NavigationBarItem(selected = tab == 1, onClick = { tab = 1 }, icon = { Icon(Icons.Default.EmojiEvents, null) }, label = { Text("랭킹") })
-                NavigationBarItem(selected = tab == 2, onClick = { tab = 2 }, icon = { Icon(Icons.Default.Route, null) }, label = { Text("기록") })
-                NavigationBarItem(selected = tab == 3, onClick = { tab = 3 }, icon = { Icon(Icons.Default.Person, null) }, label = { Text("내 정보") })
+    MaterialTheme(colorScheme = darkColorScheme(primary = Gold, background = Navy, surface = WoodDark)) {
+        Scaffold(
+            containerColor = Navy,
+            bottomBar = {
+                if (tab != 0) {
+                    NavigationBar(containerColor = WoodDark) {
+                        NavigationBarItem(selected = tab == 0, onClick = { tab = 0 }, icon = { Icon(Icons.Default.Explore, null) }, label = { Text("지도") })
+                        NavigationBarItem(selected = tab == 1, onClick = { tab = 1 }, icon = { Icon(Icons.Default.EmojiEvents, null) }, label = { Text("랭킹") })
+                        NavigationBarItem(selected = tab == 2, onClick = { tab = 2 }, icon = { Icon(Icons.Default.Route, null) }, label = { Text("기록") })
+                        NavigationBarItem(selected = tab == 3, onClick = { tab = 3 }, icon = { Icon(Icons.Default.Person, null) }, label = { Text("내 정보") })
+                    }
+                }
             }
-        }) { padding ->
+        ) { padding ->
             when (tab) {
-                0 -> MapHome(Modifier.padding(padding), tracking, routePoints, { tracking = true }, { tracking = false })
+                0 -> MapHome(tracking, routePoints, { tracking = true }, { tracking = false }, { tab = it })
                 1 -> RankingScreen(Modifier.padding(padding))
                 2 -> StatsScreen(Modifier.padding(padding))
                 else -> ProfileScreen(Modifier.padding(padding))
@@ -91,13 +103,21 @@ fun RoadMasterApp() {
     }
 }
 
-@Composable private fun MapHome(modifier: Modifier = Modifier, tracking: Boolean, routePoints: List<TrackPoint>, onTrackingStarted: () -> Unit, onTrackingStopped: () -> Unit) {
+@Composable
+private fun MapHome(
+    tracking: Boolean,
+    routePoints: List<TrackPoint>,
+    onTrackingStarted: () -> Unit,
+    onTrackingStopped: () -> Unit,
+    onTabSelected: (Int) -> Unit
+) {
     val context = LocalContext.current
     val mapView = remember(context) { RoadMapView.create(context) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
         if (grants[Manifest.permission.ACCESS_FINE_LOCATION] == true || grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
             ContextCompat.startForegroundService(context, Intent(context, TrackingService::class.java))
             onTrackingStarted()
+            Toast.makeText(context, "현재 위치를 확인하고 있습니다.", Toast.LENGTH_SHORT).show()
         }
     }
     DisposableEffect(mapView) {
@@ -109,97 +129,196 @@ fun RoadMasterApp() {
             mapView.onDestroy()
         }
     }
-    Column(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("ROAD MASTER", color = Blue, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                Text("도로를 정복하라", color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Black)
+
+    Box(Modifier.fillMaxSize().background(Navy)) {
+        AndroidView(
+            factory = { mapView },
+            modifier = Modifier.fillMaxSize(),
+            update = {
+                it.setRoute(routePoints.toList())
+                routePoints.lastOrNull()?.let(it::setCurrentLocationMarker)
             }
-            Surface(color = Color(0xFF17385B), shape = RoundedCornerShape(30.dp)) {
-                Text(if (tracking) "● GPS 기록 중" else "● GPS 대기", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), color = Color(0xFF70B5FF), fontSize = 12.sp)
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            StatCard("이번 기록 GPS", "${routePoints.size}개", Modifier.weight(1f))
-            StatCard("정확도 기준", "50m 이내", Modifier.weight(1f))
-        }
-        Box(Modifier.weight(1f).fillMaxWidth().background(Color(0xFF122A3B), RoundedCornerShape(22.dp))) {
-            AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize(), update = { it.setRoute(routePoints.toList()) })
-            Surface(Modifier.align(Alignment.TopEnd).padding(10.dp), color = Color.White.copy(alpha = 0.92f), shape = RoundedCornerShape(8.dp)) {
-                Text("지도 DEMO", Modifier.padding(horizontal = 9.dp, vertical = 5.dp), color = Color(0xFF183047), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            }
-            Surface(Modifier.align(Alignment.BottomStart).padding(8.dp), color = Color.White.copy(alpha = 0.88f), shape = RoundedCornerShape(6.dp)) {
-                Text(RoadMapView.OSM_ATTRIBUTION, Modifier.padding(horizontal = 7.dp, vertical = 4.dp), color = Color.DarkGray, fontSize = 9.sp)
-            }
-            if (routePoints.isEmpty()) {
-                Surface(Modifier.align(Alignment.Center), color = Color(0xDD10243D), shape = RoundedCornerShape(12.dp)) {
-                    Text("GPS 기록을 시작하면 이동 경로가 표시됩니다", Modifier.padding(12.dp), color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
-                }
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OutlinedButton(onClick = {
-                val fineGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-                val coarseGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-                if (!fineGranted && !coarseGranted) {
-                    permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-                } else {
-                    val latest = routePoints.lastOrNull()
-                    if (latest != null) {
-                        mapView.moveToCurrentLocation(latest)
-                    } else {
-                        LocationServices.getFusedLocationProviderClient(context).lastLocation
-                            .addOnSuccessListener { location ->
-                                if (location != null) {
-                                    mapView.moveToCurrentLocation(TrackPoint(location.latitude, location.longitude, location.accuracy, location.time))
-                                } else {
-                                    ContextCompat.startForegroundService(context, Intent(context, TrackingService::class.java))
-                                    onTrackingStarted()
-                                    Toast.makeText(context, "현재 위치를 확인하고 있습니다.", Toast.LENGTH_SHORT).show()
-                                }
-                            }
+        )
+
+        Column(
+            Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(Modifier.weight(1f)) {
+                    WoodPanel(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(horizontal = 16.dp, vertical = 11.dp)) {
+                            Text("ROAD MASTER", color = GoldLight, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                            Text("도로를 정복하라", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                            Text(if (tracking) "● GPS 탐험 기록 중" else "● 탐험 준비 완료", color = if (tracking) Color(0xFF9EFFB0) else Gold, fontSize = 11.sp)
+                        }
                     }
                 }
-            }, modifier = Modifier.weight(1f).height(50.dp), shape = RoundedCornerShape(14.dp)) { Text("내 위치") }
-            Button(onClick = {
-            if (tracking) {
-                context.stopService(Intent(context, TrackingService::class.java))
-                onTrackingStopped()
-            } else {
-                val permissions = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
-                if (Build.VERSION.SDK_INT >= 33) permissions.add(Manifest.permission.POST_NOTIFICATIONS)
-                val missing = permissions.filter { ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED }
-                if (missing.isEmpty()) {
-                    ContextCompat.startForegroundService(context, Intent(context, TrackingService::class.java))
-                    onTrackingStarted()
-                } else permissionLauncher.launch(missing.toTypedArray())
+                GameButton(
+                    text = "내 위치",
+                    icon = { Icon(Icons.Default.MyLocation, null, tint = GoldLight) },
+                    onClick = {
+                        val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                        val coarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                        if (!fine && !coarse) {
+                            permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                        } else {
+                            val latest = routePoints.lastOrNull()
+                            if (latest != null) {
+                                mapView.moveToCurrentLocation(latest)
+                            } else {
+                                LocationServices.getFusedLocationProviderClient(context).lastLocation
+                                    .addOnSuccessListener { location ->
+                                        if (location != null) {
+                                            mapView.moveToCurrentLocation(TrackPoint(location.latitude, location.longitude, location.accuracy, location.time))
+                                        } else {
+                                            ContextCompat.startForegroundService(context, Intent(context, TrackingService::class.java))
+                                            onTrackingStarted()
+                                            Toast.makeText(context, "현재 위치를 확인하고 있습니다.", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                    .addOnFailureListener {
+                                        Toast.makeText(context, "위치를 가져오지 못했습니다. GPS 설정을 확인해 주세요.", Toast.LENGTH_SHORT).show()
+                                    }
+                            }
+                        }
+                    }
+                )
             }
-        }, modifier = Modifier.weight(1.4f).height(50.dp), shape = RoundedCornerShape(14.dp)) {
-            Text(if (tracking) "GPS 기록 종료" else "GPS 기록 시작", fontWeight = FontWeight.Bold)
+
+            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Surface(color = Color(0xDDFFFFFF), shape = RoundedCornerShape(7.dp)) {
+                        Text(RoadMapView.OSM_ATTRIBUTION, Modifier.padding(horizontal = 8.dp, vertical = 5.dp), color = Color.DarkGray, fontSize = 9.sp)
+                    }
+                }
+                WoodPanel(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                            Text("탐험 현황", color = GoldLight, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text("GPS 포인트  ${routePoints.size}", color = Color.White, fontSize = 12.sp)
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                            GameButton(
+                                text = if (tracking) "기록 종료" else "탐험 시작",
+                                modifier = Modifier.weight(1f),
+                                highlighted = true,
+                                onClick = {
+                                    if (tracking) {
+                                        context.stopService(Intent(context, TrackingService::class.java))
+                                        onTrackingStopped()
+                                    } else {
+                                        val permissions = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                                        if (Build.VERSION.SDK_INT >= 33) permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+                                        val missing = permissions.filter { ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED }
+                                        if (missing.isEmpty()) {
+                                            ContextCompat.startForegroundService(context, Intent(context, TrackingService::class.java))
+                                            onTrackingStarted()
+                                        } else permissionLauncher.launch(missing.toTypedArray())
+                                    }
+                                }
+                            )
+                            GameButton(text = "내 정보", modifier = Modifier.weight(1f), onClick = { onTabSelected(3) })
+                            GameButton(text = "랭킹", modifier = Modifier.weight(1f), onClick = { onTabSelected(1) })
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                            MiniNavItem("지도", 0, onTabSelected, Modifier.weight(1f))
+                            MiniNavItem("랭킹", 1, onTabSelected, Modifier.weight(1f))
+                            MiniNavItem("기록", 2, onTabSelected, Modifier.weight(1f))
+                            MiniNavItem("내 정보", 3, onTabSelected, Modifier.weight(1f))
+                        }
+                    }
+                }
+                Text("이동 중에는 화면을 조작하지 마세요.", color = Color.White, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
             }
         }
-        Text("이동 중에는 화면을 조작하지 마세요. 현재 경로는 이 화면의 임시 표시이며 서버에 저장되지 않습니다.", color = Color(0xFF8FA5BC), fontSize = 10.sp)
+    }
+}
+
+@Composable
+private fun WoodPanel(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Surface(
+        modifier = modifier.shadow(8.dp, RoundedCornerShape(18.dp)),
+        shape = RoundedCornerShape(18.dp),
+        color = WoodDark,
+        border = androidx.compose.foundation.BorderStroke(2.dp, Gold)
+    ) {
+        Box(Modifier.background(Brush.verticalGradient(listOf(Color(0xFF996333), Color(0xFF603318), Color(0xFF3A1D10))))) {
+            content()
+        }
+    }
+}
+
+@Composable
+private fun GameButton(
+    text: String,
+    modifier: Modifier = Modifier,
+    highlighted: Boolean = false,
+    icon: (@Composable () -> Unit)? = null,
+    onClick: () -> Unit
+) {
+    val colors = if (highlighted) listOf(Color(0xFFFFE7A0), Color(0xFFD99A36), Color(0xFF9A5A1D))
+        else listOf(Color(0xFFB8793B), Color(0xFF78421F), Color(0xFF4A2816))
+    Surface(
+        modifier = modifier.heightIn(min = 46.dp).shadow(4.dp, RoundedCornerShape(13.dp)).clickable(onClick = onClick),
+        shape = RoundedCornerShape(13.dp),
+        color = WoodMid,
+        border = androidx.compose.foundation.BorderStroke(1.5.dp, GoldLight)
+    ) {
+        Row(
+            Modifier.background(Brush.verticalGradient(colors)).padding(horizontal = 10.dp, vertical = 11.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (icon != null) {
+                icon()
+                Spacer(Modifier.width(6.dp))
+            }
+            Text(text, color = if (highlighted) Color(0xFF3C210F) else Color.White, fontWeight = FontWeight.Black, fontSize = 13.sp, textAlign = TextAlign.Center)
+        }
+    }
+}
+
+@Composable
+private fun MiniNavItem(label: String, index: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val selected = index == 0
+    Surface(
+        modifier = modifier.height(34.dp).clickable { onSelect(index) },
+        color = if (selected) Color(0xFFB77A35) else Color(0xFF4A2816),
+        shape = RoundedCornerShape(9.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Gold.copy(alpha = 0.75f))
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(label, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
 @Composable private fun StatCard(title: String, value: String, modifier: Modifier = Modifier) {
-    Surface(modifier, color = Panel, shape = RoundedCornerShape(16.dp)) { Column(Modifier.padding(14.dp)) { Text(title, color = Color(0xFF9EB3C9), fontSize = 12.sp); Text(value, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold) } }
+    Surface(modifier, color = WoodDark, shape = RoundedCornerShape(16.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Gold)) {
+        Column(Modifier.padding(14.dp)) {
+            Text(title, color = GoldLight, fontSize = 12.sp)
+            Text(value, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        }
+    }
 }
 
 @Composable private fun RankingScreen(modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("전국 랭킹", color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Black)
-        Text("이번 시즌 TOP 플레이어", color = Color(0xFF9EB3C9))
+    Column(modifier.fillMaxSize().background(Navy).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text("전국 랭킹", color = GoldLight, fontSize = 27.sp, fontWeight = FontWeight.Black)
+        Text("이번 시즌 TOP 플레이어", color = Color(0xFFCFB991))
         listOf("1   ROAD KING        82,450 P", "2   BLUE RIDER        76,210 P", "3   MAP EXPLORER      69,880 P", "4   YOU               12,480 P").forEachIndexed { i, row ->
-            Surface(color = if (i == 3) Color(0xFF153A60) else Panel, shape = RoundedCornerShape(14.dp)) { Text(row, Modifier.fillMaxWidth().padding(18.dp), color = Color.White, fontWeight = FontWeight.SemiBold) }
+            Surface(color = WoodDark, shape = RoundedCornerShape(14.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Gold.copy(alpha = 0.65f))) {
+                Text(row, Modifier.fillMaxWidth().padding(18.dp), color = Color.White, fontWeight = FontWeight.SemiBold)
+            }
         }
-        Text("※ 현재는 화면 시안용 예시 데이터입니다. Firebase 연동 후 실제 사용자 랭킹으로 교체됩니다.", color = Color(0xFF9EB3C9), fontSize = 11.sp)
+        Text("※ 현재는 화면 시안용 예시 데이터입니다. Firebase 연동 후 실제 사용자 랭킹으로 교체됩니다.", color = Color(0xFFCFB991), fontSize = 11.sp)
     }
 }
 
 @Composable private fun StatsScreen(modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("나의 이동 기록", color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Black)
+    Column(modifier.fillMaxSize().background(Navy).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text("나의 이동 기록", color = GoldLight, fontSize = 27.sp, fontWeight = FontWeight.Black)
         StatCard("총 이동 거리", "0.0 km", Modifier.fillMaxWidth())
         StatCard("방문 도로 구간", "0개", Modifier.fillMaxWidth())
         StatCard("반복 방문", "0회", Modifier.fillMaxWidth())
@@ -212,23 +331,23 @@ fun RoadMasterApp() {
     val prefs = remember { context.getSharedPreferences("road_master_profile", Context.MODE_PRIVATE) }
     var nickname by remember { mutableStateOf(prefs.getString("nickname", "ROAD PLAYER") ?: "ROAD PLAYER") }
     var editNickname by remember { mutableStateOf(nickname) }
-    Column(modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("플레이어 정보", color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Black)
-        Surface(color = Panel, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+    Column(modifier.fillMaxSize().background(Navy).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text("플레이어 정보", color = GoldLight, fontSize = 27.sp, fontWeight = FontWeight.Black)
+        Surface(color = WoodDark, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth(), border = androidx.compose.foundation.BorderStroke(1.5.dp, Gold)) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("나의 닉네임", color = Color(0xFF9EB3C9), fontSize = 13.sp)
+                Text("나의 닉네임", color = GoldLight, fontSize = 13.sp)
                 Text(nickname, color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold)
                 OutlinedTextField(value = editNickname, onValueChange = { if (it.length <= 16) editNickname = it }, label = { Text("새 닉네임") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                Button(onClick = {
+                GameButton(text = "닉네임 저장", modifier = Modifier.fillMaxWidth(), highlighted = true, onClick = {
                     val value = editNickname.trim()
                     if (value.isNotEmpty()) {
                         nickname = value
                         prefs.edit().putString("nickname", value).apply()
                         Toast.makeText(context, "닉네임을 저장했습니다.", Toast.LENGTH_SHORT).show()
                     } else Toast.makeText(context, "닉네임을 입력해 주세요.", Toast.LENGTH_SHORT).show()
-                }, modifier = Modifier.fillMaxWidth()) { Text("닉네임 저장") }
+                })
             }
         }
-        Text("닉네임은 이 휴대폰에 저장됩니다. 계정 간 동기화 기능은 아직 연결되지 않았습니다.", color = Color(0xFF9EB3C9), fontSize = 12.sp)
+        Text("닉네임은 이 휴대폰에 저장됩니다. 계정 간 동기화 기능은 아직 연결되지 않았습니다.", color = Color(0xFFCFB991), fontSize = 12.sp)
     }
 }
