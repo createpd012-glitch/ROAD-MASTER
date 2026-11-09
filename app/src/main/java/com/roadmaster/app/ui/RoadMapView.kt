@@ -17,6 +17,7 @@ import org.maplibre.android.style.layers.PropertyFactory.circleStrokeWidth
 import org.maplibre.android.style.layers.PropertyFactory.lineColor
 import org.maplibre.android.style.layers.PropertyFactory.lineWidth
 import org.maplibre.android.style.sources.GeoJsonSource
+import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
 
@@ -39,7 +40,7 @@ class RoadMapView private constructor(context: Context, initialized: Unit) : Map
                 style.addLayer(LineLayer(ROUTE_LAYER_ID, ROUTE_SOURCE_ID).withProperties(lineColor("#2389FF"), lineWidth(5.0f)))
                 routeSource = route
 
-                val locationSource = GeoJsonSource(LOCATION_SOURCE_ID, emptyPoint())
+                val locationSource = GeoJsonSource(LOCATION_SOURCE_ID, FeatureCollection.fromFeatures(emptyArray()))
                 style.addSource(locationSource)
                 style.addLayer(
                     CircleLayer(LOCATION_LAYER_ID, LOCATION_SOURCE_ID).withProperties(
@@ -86,7 +87,6 @@ class RoadMapView private constructor(context: Context, initialized: Unit) : Map
     }
 
     private fun emptyLine() = LineString.fromLngLats(listOf(Point.fromLngLat(127.85, 36.35), Point.fromLngLat(127.851, 36.351)))
-    private fun emptyPoint() = Point.fromLngLat(127.85, 36.35)
 
     companion object {
         fun create(context: Context): RoadMapView {
