@@ -90,9 +90,9 @@ fun RoadMasterApp() {
     MaterialTheme(colorScheme = darkColorScheme(primary = Gold, background = Navy, surface = WoodDark)) {
         when (tab) {
             0 -> MapHome(tracking, routePoints, { tracking = true }, { tracking = false }, { tab = it })
-            1 -> RankingScreen(Modifier.fillMaxSize())
-            2 -> StatsScreen(Modifier.fillMaxSize())
-            else -> SettingsScreen(Modifier.fillMaxSize(), musicEnabled) { enabled ->
+            1 -> RankingScreen(Modifier.fillMaxSize()) { tab = 0 }
+            2 -> StatsScreen(Modifier.fillMaxSize()) { tab = 0 }
+            else -> SettingsScreen(Modifier.fillMaxSize(), musicEnabled, { tab = 0 }) { enabled ->
                 musicEnabled = enabled
                 preferences.edit().putBoolean("background_music", enabled).apply()
             }
@@ -258,8 +258,9 @@ private fun BottomItem(text: String, modifier: Modifier = Modifier, icon: @Compo
     }
 }
 
-@Composable private fun RankingScreen(modifier: Modifier = Modifier) {
+@Composable private fun RankingScreen(modifier: Modifier = Modifier, onBack: () -> Unit) {
     Column(modifier.fillMaxSize().background(Navy).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text("← 지도", color = Gold, fontSize = 14.sp, modifier = Modifier.clickable { onBack() })
         Text("전국 랭킹", color = GoldLight, fontSize = 27.sp, fontWeight = FontWeight.Black)
         Text("이번 시즌 TOP 플레이어", color = Color(0xFFCFB991))
         listOf("1   ROAD KING        82,450 P", "2   BLUE RIDER        76,210 P", "3   MAP EXPLORER      69,880 P", "4   YOU               12,480 P").forEachIndexed { i, row ->
@@ -271,8 +272,9 @@ private fun BottomItem(text: String, modifier: Modifier = Modifier, icon: @Compo
     }
 }
 
-@Composable private fun StatsScreen(modifier: Modifier = Modifier) {
+@Composable private fun StatsScreen(modifier: Modifier = Modifier, onBack: () -> Unit) {
     Column(modifier.fillMaxSize().background(Navy).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text("← 지도", color = Gold, fontSize = 14.sp, modifier = Modifier.clickable { onBack() })
         Text("나의 이동 기록", color = GoldLight, fontSize = 27.sp, fontWeight = FontWeight.Black)
         StatCard("총 이동 거리", "0.0 km", Modifier.fillMaxWidth())
         StatCard("방문 도로 구간", "0개", Modifier.fillMaxWidth())
@@ -281,12 +283,13 @@ private fun BottomItem(text: String, modifier: Modifier = Modifier, icon: @Compo
     }
 }
 
-@Composable private fun SettingsScreen(modifier: Modifier = Modifier, musicEnabled: Boolean, onMusicChanged: (Boolean) -> Unit) {
+@Composable private fun SettingsScreen(modifier: Modifier = Modifier, musicEnabled: Boolean, onBack: () -> Unit, onMusicChanged: (Boolean) -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("road_master_profile", Context.MODE_PRIVATE) }
     var nickname by remember { mutableStateOf(prefs.getString("nickname", "ROAD PLAYER") ?: "ROAD PLAYER") }
     var editNickname by remember { mutableStateOf(nickname) }
     Column(modifier.fillMaxSize().background(Navy).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text("← 지도", color = Gold, fontSize = 14.sp, modifier = Modifier.clickable { onBack() })
         Text("설정", color = GoldLight, fontSize = 27.sp, fontWeight = FontWeight.Black)
         IcePanel(Modifier.fillMaxWidth()) {
             Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
