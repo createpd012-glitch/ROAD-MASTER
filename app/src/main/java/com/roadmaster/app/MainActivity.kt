@@ -103,7 +103,7 @@ fun RoadMasterApp() {
 @Composable
 private fun MapHome(
     tracking: Boolean,
-    routePoints: List<TrackPoint>,
+    routePoints: MutableList<TrackPoint>,
     onTrackingStarted: () -> Unit,
     onTrackingStopped: () -> Unit,
     onTabSelected: (Int) -> Unit
@@ -229,7 +229,7 @@ private fun IcePanel(modifier: Modifier = Modifier, content: @Composable () -> U
 private fun IceButton(text: String, modifier: Modifier = Modifier, highlighted: Boolean = false, icon: (@Composable () -> Unit)? = null, onClick: () -> Unit) {
     Surface(modifier = modifier.heightIn(min = 46.dp).shadow(5.dp, RoundedCornerShape(13.dp)).clickable(onClick = onClick),
         shape = RoundedCornerShape(13.dp), color = WoodMid, border = androidx.compose.foundation.BorderStroke(1.5.dp, GoldLight)) {
-        Row(Modifier.background(Brush.verticalGradient(if (highlighted) listOf(Color(0xFFE5FCFF), Color(0xFF6CD9F5), Color(0xFF2385B7)) else listOf(Color(0xFF62B8E3), Color(0xFF286E9F), Color(0xFF123E69))).padding(horizontal = 10.dp, vertical = 11.dp),
+        Row(Modifier.background(Brush.verticalGradient(if (highlighted) listOf(Color(0xFFE5FCFF), Color(0xFF6CD9F5), Color(0xFF2385B7)) else listOf(Color(0xFF62B8E3), Color(0xFF286E9F), Color(0xFF123E69)))).padding(horizontal = 10.dp, vertical = 11.dp),
             horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) { icon(); Spacer(Modifier.width(6.dp)) }
             Text(text, color = if (highlighted) Color(0xFF07304D) else Color.White, fontWeight = FontWeight.Black, fontSize = 13.sp, textAlign = TextAlign.Center)
