@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextAlign
+import com.google.android.gms.location.LocationServices
 import com.roadmaster.app.location.TrackingService
 import com.roadmaster.app.ui.RoadMapView
 import com.roadmaster.app.ui.TrackPoint
@@ -138,9 +139,27 @@ fun RoadMasterApp() {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             OutlinedButton(onClick = {
-                val latest = routePoints.lastOrNull()
-                if (latest != null) mapView.moveToCurrentLocation(latest)
-                else Toast.makeText(context, "먼저 GPS 기록을 시작해 현재 위치를 확인해 주세요.", Toast.LENGTH_SHORT).show()
+                val fineGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                val coarseGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                if (!fineGranted && !coarseGranted) {
+                    permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                } else {
+                    val latest = routePoints.lastOrNull()
+                    if (latest != null) {
+                        mapView.moveToCurrentLocation(latest)
+                    } else {
+                        LocationServices.getFusedLocationProviderClient(context).lastLocation
+                            .addOnSuccessListener { location ->
+                                if (location != null) {
+                                    mapView.moveToCurrentLocation(TrackPoint(location.latitude, location.longitude, location.accuracy, location.time))
+                                } else {
+                                    ContextCompat.startForegroundService(context, Intent(context, TrackingService::class.java))
+                                    onTrackingStarted()
+                                    Toast.makeText(context, "현재 위치를 확인하고 있습니다.", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                    }
+                }
             }, modifier = Modifier.weight(1f).height(50.dp), shape = RoundedCornerShape(14.dp)) { Text("내 위치") }
             Button(onClick = {
             if (tracking) {
