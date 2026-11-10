@@ -5,7 +5,7 @@
 Implemented in the Android client:
 - MapLibre Native map centered on South Korea.
 - OpenStreetMap raster tiles for development/demo viewing, with visible attribution.
-- User-started foreground GPS service and persistent notification.
+- One-shot My Location lookup (does not start recording) plus a user-started foreground GPS service with persistent notification.
 - GPS validation for coordinate range, accuracy, stale fixes and duplicate timestamps.
 - Live current-session route line in blue.
 - A current-location marker and camera move action.
@@ -23,7 +23,7 @@ Not implemented:
 ## 2. Recommended architecture
 
 Android client
-1. Ask for location permission only when the player starts a session or taps My Location.
+1. Ask for location permission only when the player taps My Location or explicitly starts a session; the My Location action is one-shot and must not start continuous recording.
 2. Create a session ID and collect timestamped fixes while the session is active.
 3. Keep the current session line local and visibly indicate when recording is active.
 4. Upload samples in bounded batches only after authentication and consent are configured.
