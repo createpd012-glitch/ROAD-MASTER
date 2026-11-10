@@ -49,6 +49,9 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import com.google.android.gms.location.LocationServices
 import com.roadmaster.app.location.TrackingService
 import com.roadmaster.app.ui.RoadMapView
@@ -217,13 +220,49 @@ private fun MapHome(
             Toast.makeText(context, "현재 위치를 확인하고 있습니다.", Toast.LENGTH_SHORT).show()
         }
     }
-    DisposableEffect(mapView) {
-        mapView.onStart()
-        mapView.onResume()
+    val lifecycleOwner = context as? LifecycleOwner
+    DisposableEffect(mapView, lifecycleOwner) {
+        var started = false
+        var resumed = false
+        var destroyed = false
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> if (!started) {
+                    mapView.onStart()
+                    started = true
+                }
+                Lifecycle.Event.ON_RESUME -> if (!resumed) {
+                    mapView.onResume()
+                    resumed = true
+                }
+                Lifecycle.Event.ON_PAUSE -> if (resumed) {
+                    mapView.onPause()
+                    resumed = false
+                }
+                Lifecycle.Event.ON_STOP -> if (started) {
+                    mapView.onStop()
+                    started = false
+                }
+                Lifecycle.Event.ON_DESTROY -> if (!destroyed) {
+                    mapView.onDestroy()
+                    destroyed = true
+                }
+                else -> Unit
+            }
+        }
+        if (lifecycleOwner != null) {
+            lifecycleOwner.lifecycle.addObserver(observer)
+        } else {
+            mapView.onStart()
+            mapView.onResume()
+            started = true
+            resumed = true
+        }
         onDispose {
-            mapView.onPause()
-            mapView.onStop()
-            mapView.onDestroy()
+            lifecycleOwner?.lifecycle?.removeObserver(observer)
+            if (resumed) mapView.onPause()
+            if (started) mapView.onStop()
+            if (!destroyed) mapView.onDestroy()
         }
     }
 
