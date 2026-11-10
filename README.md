@@ -6,7 +6,7 @@ Android-only GPS road exploration game prototype built with Kotlin, Jetpack Comp
 
 - Full-screen Korea-centered MapLibre map with game HUD controls overlaid on the map.
 - OpenStreetMap raster basemap for development/demo viewing, with visible attribution.
-- My Location control that moves the camera and displays a custom location marker when a location fix is available.
+- My Location control that performs a one-shot location lookup, moves the camera and displays a custom marker without starting route recording.
 - Foreground GPS tracking service with a persistent notification.
 - GPS sample validation for coordinate bounds, accuracy, stale fixes and duplicate timestamps.
 - Current-session route polyline drawn in blue after at least two accepted GPS fixes.
@@ -79,7 +79,7 @@ The backend must be authoritative. The Android app must never decide its own sco
 
 ## Privacy and safety
 
-- Location collection starts only after an explicit user action.
+- The My Location button performs a one-shot fix; continuous route recording starts only after the player explicitly taps 탐험 시작.
 - A persistent notification indicates active recording and the app provides a stop control.
 - Do not publish live location, exact raw tracks, home/work endpoints or another user's route.
 - Minimize raw GPS retention and provide account/location-data deletion before launch.
