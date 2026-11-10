@@ -51,7 +51,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.android.gms.location.LocationServices
 import com.roadmaster.app.location.TrackingService
 import com.roadmaster.app.ui.RoadMapView
@@ -220,7 +220,7 @@ private fun MapHome(
             Toast.makeText(context, "현재 위치를 확인하고 있습니다.", Toast.LENGTH_SHORT).show()
         }
     }
-    val lifecycleOwner = context as? LifecycleOwner
+    val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(mapView, lifecycleOwner) {
         var started = false
         var resumed = false
@@ -250,16 +250,9 @@ private fun MapHome(
                 else -> Unit
             }
         }
-        if (lifecycleOwner != null) {
-            lifecycleOwner.lifecycle.addObserver(observer)
-        } else {
-            mapView.onStart()
-            mapView.onResume()
-            started = true
-            resumed = true
-        }
+        lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
-            lifecycleOwner?.lifecycle?.removeObserver(observer)
+            lifecycleOwner.lifecycle.removeObserver(observer)
             if (resumed) mapView.onPause()
             if (started) mapView.onStop()
             if (!destroyed) mapView.onDestroy()
