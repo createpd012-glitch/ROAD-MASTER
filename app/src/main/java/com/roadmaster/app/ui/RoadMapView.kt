@@ -58,7 +58,7 @@ class RoadMapView private constructor(context: Context, initialized: Unit) : Map
                     val visitTier = index + 1
                     val sourceId = "roadmaster-visited-source-$visitTier"
                     val layerId = "roadmaster-visited-layer-$visitTier"
-                    val source = GeoJsonSource(sourceId, FeatureCollection.fromFeatures(emptyArray()))
+                    val source = GeoJsonSource(sourceId, FeatureCollection.fromFeatures(emptyArray<Feature>()))
                     style.addSource(source)
                     style.addLayer(
                         LineLayer(layerId, sourceId).withProperties(
@@ -81,7 +81,7 @@ class RoadMapView private constructor(context: Context, initialized: Unit) : Map
 
                 val locationSource = GeoJsonSource(
                     LOCATION_SOURCE_ID,
-                    FeatureCollection.fromFeatures(emptyArray())
+                    FeatureCollection.fromFeatures(emptyArray<Feature>())
                 )
                 style.addSource(locationSource)
                 style.addImage(LOCATION_ICON_ID, createCuteLocationPin())
