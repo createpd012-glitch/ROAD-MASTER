@@ -53,6 +53,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import com.roadmaster.app.location.TrackingService
 import com.roadmaster.app.ui.RoadMapView
 import com.roadmaster.app.ui.TrackPoint
@@ -213,11 +215,40 @@ private fun MapHome(
 ) {
     val context = LocalContext.current
     val mapView = remember(context) { RoadMapView.create(context) }
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+    val locateUser: () -> Unit = {
+        val tokenSource = CancellationTokenSource()
+        LocationServices.getFusedLocationProviderClient(context)
+            .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, tokenSource.token)
+            .addOnSuccessListener { location ->
+                if (location != null && location.hasAccuracy() && location.accuracy <= 100f) {
+                    mapView.moveToCurrentLocation(
+                        TrackPoint(location.latitude, location.longitude, location.accuracy, location.time)
+                    )
+                } else {
+                    Toast.makeText(context, "현재 위치를 확인할 수 없습니다. 위치 서비스를 켜고 다시 시도해 주세요.", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .addOnFailureListener {
+                Toast.makeText(context, "위치를 가져오지 못했습니다. 위치 설정을 확인해 주세요.", Toast.LENGTH_SHORT).show()
+            }
+    }
+    val startTracking: () -> Unit = {
+        routePoints.clear()
+        ContextCompat.startForegroundService(context, Intent(context, TrackingService::class.java))
+        onTrackingStarted()
+    }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
         if (grants[Manifest.permission.ACCESS_FINE_LOCATION] == true || grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
-            ContextCompat.startForegroundService(context, Intent(context, TrackingService::class.java))
-            onTrackingStarted()
-            Toast.makeText(context, "현재 위치를 확인하고 있습니다.", Toast.LENGTH_SHORT).show()
+            locateUser()
+        } else {
+            Toast.makeText(context, "현재 위치 표시를 위해 위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
+        }
+    }
+    val trackingPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+        if (grants[Manifest.permission.ACCESS_FINE_LOCATION] == true || grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
+            startTracking()
+        } else {
+            Toast.makeText(context, "경로 기록을 시작하려면 위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
         }
     }
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -283,26 +314,12 @@ private fun MapHome(
                         val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
                         val coarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
                         if (!fine && !coarse) {
-                            permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                            locationPermissionLauncher.launch(
+                                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                            )
                         } else {
-                            val latest = routePoints.lastOrNull()
-                            if (latest != null) {
-                                mapView.moveToCurrentLocation(latest)
-                            } else {
-                                LocationServices.getFusedLocationProviderClient(context).lastLocation
-                                    .addOnSuccessListener { location ->
-                                        if (location != null) {
-                                            mapView.moveToCurrentLocation(TrackPoint(location.latitude, location.longitude, location.accuracy, location.time))
-                                        } else {
-                                            ContextCompat.startForegroundService(context, Intent(context, TrackingService::class.java))
-                                            onTrackingStarted()
-                                            Toast.makeText(context, "현재 위치를 확인하고 있습니다.", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                    .addOnFailureListener {
-                                        Toast.makeText(context, "위치를 가져오지 못했습니다. GPS 설정을 확인해 주세요.", Toast.LENGTH_SHORT).show()
-                                    }
-                            }
+                            // My Location performs a one-shot fix only; it never starts a recording session.
+                            locateUser()
                         }
                     }
                 )
@@ -325,10 +342,8 @@ private fun MapHome(
                                 if (Build.VERSION.SDK_INT >= 33) permissions.add(Manifest.permission.POST_NOTIFICATIONS)
                                 val missing = permissions.filter { ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED }
                                 if (missing.isEmpty()) {
-                                    routePoints.clear()
-                                    ContextCompat.startForegroundService(context, Intent(context, TrackingService::class.java))
-                                    onTrackingStarted()
-                                } else permissionLauncher.launch(missing.toTypedArray())
+                                    startTracking()
+                                } else trackingPermissionLauncher.launch(missing.toTypedArray())
                             }
                         }
                         BottomItem("랭킹", Modifier.weight(1f), { Icon(Icons.Default.EmojiEvents, null, tint = GoldLight, modifier = Modifier.size(19.dp)) }) { onTabSelected(1) }
