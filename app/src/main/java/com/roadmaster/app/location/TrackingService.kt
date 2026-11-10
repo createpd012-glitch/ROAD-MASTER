@@ -18,6 +18,7 @@ class TrackingService : Service() {
     private lateinit var client: FusedLocationProviderClient
     private lateinit var callback: LocationCallback
     private var lastAcceptedLocationTime = 0L
+    private var updatesRequested = false
 
     override fun onCreate() {
         super.onCreate()
@@ -33,12 +34,14 @@ class TrackingService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         try {
             startForeground(NOTIFICATION_ID, notification())
-            client.removeLocationUpdates(callback)
-            val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, UPDATE_INTERVAL_MILLIS)
-                .setMinUpdateDistanceMeters(MIN_UPDATE_DISTANCE_METERS)
-                .setWaitForAccurateLocation(false)
-                .build()
-            client.requestLocationUpdates(request, callback, mainLooper)
+            if (!updatesRequested) {
+                val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, UPDATE_INTERVAL_MILLIS)
+                    .setMinUpdateDistanceMeters(MIN_UPDATE_DISTANCE_METERS)
+                    .setWaitForAccurateLocation(false)
+                    .build()
+                client.requestLocationUpdates(request, callback, mainLooper)
+                updatesRequested = true
+            }
         } catch (_: SecurityException) {
             stopSelf()
         }
@@ -71,6 +74,7 @@ class TrackingService : Service() {
         if (::client.isInitialized && ::callback.isInitialized) {
             client.removeLocationUpdates(callback)
         }
+        updatesRequested = false
         super.onDestroy()
     }
 
