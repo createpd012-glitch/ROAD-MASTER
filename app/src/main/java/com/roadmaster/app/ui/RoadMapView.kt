@@ -38,7 +38,7 @@ class RoadMapView private constructor(context: Context, initialized: Unit) : Map
     private var routeSource: GeoJsonSource? = null
     private var currentLocationSource: GeoJsonSource? = null
     private val visitedRoadSources = mutableMapOf<Int, GeoJsonSource>()
-    private var lastCameraPointCount = 0
+    private var lastCameraTimestampMillis = 0L
     private var pendingRoute: List<TrackPoint> = emptyList()
     private var pendingVisitedRoads: List<VisitedRoadGeometry> = emptyList()
     private var pendingCurrentLocation: TrackPoint? = null
@@ -151,20 +151,20 @@ class RoadMapView private constructor(context: Context, initialized: Unit) : Map
         val source = routeSource ?: return
         if (points.size < 2) {
             source.setGeoJson(emptyLine())
-            lastCameraPointCount = 0
+            lastCameraTimestampMillis = 0L
             return
         }
 
         source.setGeoJson(
             LineString.fromLngLats(points.map { Point.fromLngLat(it.longitude, it.latitude) })
         )
-        if (points.size > lastCameraPointCount) {
-            val latest = points.last()
+        val latest = points.last()
+        if (latest.recordedAtMillis > lastCameraTimestampMillis) {
             map?.animateCamera(
                 CameraUpdateFactory.newLatLngZoom(LatLng(latest.latitude, latest.longitude), TRACKING_ZOOM),
                 500
             )
-            lastCameraPointCount = points.size
+            lastCameraTimestampMillis = latest.recordedAtMillis
         }
     }
 
